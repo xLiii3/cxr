@@ -91,14 +91,6 @@ def load_lora(model, path, r=16):
     return ck
 
 
-def trainable_parameters(model):
-    return [p for p in model.parameters() if p.requires_grad]
-
-
-def count_params(module):
-    return sum(p.numel() for p in module.parameters() if p.requires_grad)
-
-
 def freeze_all(model):
     for p in model.parameters():
         p.requires_grad_(False)

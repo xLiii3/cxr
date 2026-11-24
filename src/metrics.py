@@ -49,8 +49,7 @@ def average_precision(y_true, y_score):
 def recall_at_k(relevant, k):
     """Mean fraction of queries whose top-k contains a relevant item.
 
-    relevant: bool [n_query, n_gallery]; column 0 is assumed to be the query
-    itself and is skipped when self_match=True.
+    relevant: bool [n_query, n_gallery], best matches first.
     """
     relevant = np.asarray(relevant, dtype=bool)
     hit = relevant[:, :k].any(axis=1)

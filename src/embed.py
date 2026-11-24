@@ -1,4 +1,4 @@
-﻿"""Stage 1: cache BiomedCLIP image and text embeddings.
+"""Stage 1: cache BiomedCLIP image and text embeddings.
 
     python -m src.embed
 Writes data/processed/embeddings.npz with keys: X, y, split, text, normal.
@@ -10,7 +10,7 @@ import numpy as np
 import torch
 
 from . import config as C
-from .data import loader, read_split, to_tensor
+from .data import loader, read_split
 from .model import embed_images, embed_texts, load_clip
 
 
@@ -22,7 +22,7 @@ def main():
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     df = read_split()
-    model, preprocess, tokenizer = load_clip(device)
+    model, _, tokenizer = load_clip(device)
     prompts = C.prompt_list()
 
     flat = [p for row in prompts for p in row] + [C.NORMAL_PROMPT]

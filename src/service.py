@@ -1,14 +1,11 @@
 """Inference engine shared by the Gradio app and the HTTP API."""
 import faiss
-import matplotlib
 import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
+from matplotlib import cm
 from PIL import Image
-
-matplotlib.use("Agg")
-from matplotlib import cm  # noqa: E402
 
 from . import config as C
 from .data import to_tensor
@@ -82,7 +79,7 @@ class Engine:
         x = to_tensor(image).to(self.device)
         with torch.no_grad():
             p = torch.sigmoid(self.model.head(self.model.encode_image(x)))[0]
-        cls = int(p.argmax()) if cls is None else int(cls)
+        cls = int(p.argmax()) if cls is None else (C.CLASSES.index(cls) if isinstance(cls, str) else int(cls))
         cam = gradcam(self.model, x, cls)
         base = np.asarray(image.convert("L").resize((C.IMG_SIZE, C.IMG_SIZE)), dtype="float32") / 255.0
         a = (0.75 * np.clip(cam, 0, 1) ** 0.7)[..., None]

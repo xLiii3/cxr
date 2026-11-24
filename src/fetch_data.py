@@ -10,7 +10,6 @@ import os
 import shutil
 import subprocess
 import zipfile
-from pathlib import Path
 
 from . import config as C
 

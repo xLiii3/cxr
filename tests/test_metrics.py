@@ -2,8 +2,8 @@
 import numpy as np
 from sklearn.metrics import average_precision_score, roc_auc_score
 
-from src.metrics import (average_precision, ece, recall_at_k, roc_auc,
-                         sens_spec, youden_threshold)
+from src.metrics import (average_precision, ece, precision_at_k, recall_at_k,
+                         roc_auc, sens_spec, youden_threshold)
 
 
 def _data(seed=0, n=500):
@@ -41,6 +41,8 @@ def test_recall_at_k():
     rel = np.array([[1, 0, 0], [0, 0, 1], [0, 0, 0]], dtype=bool)
     assert recall_at_k(rel, 1) == 1 / 3
     assert recall_at_k(rel, 3) == 2 / 3
+    assert precision_at_k(rel, 1) == 1 / 3
+    assert precision_at_k(rel, 2) == 1 / 6
 
 
 def test_threshold_and_ece():

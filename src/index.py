@@ -20,10 +20,10 @@ K = 10
 N_QUERY = 100
 
 
-def embed_frame(model, df, device, batch=128, workers=8):
+def embed_frame(model, df, device, batch=128):
     out = []
     with torch.no_grad():
-        for x, _ in loader(df, batch, workers=workers):
+        for x, _ in loader(df, batch):
             with torch.autocast("cuda", dtype=torch.bfloat16, enabled=device == "cuda"):
                 out.append(model.encode_image(x.to(device, non_blocking=True)).float().cpu())
     e = torch.cat(out).numpy()
@@ -89,8 +89,7 @@ def main():
         stats[kind] = {"p50_ms": float(np.percentile(lat, 50)),
                        "p95_ms": float(np.percentile(lat, 95)),
                        "recall_vs_flat": float(inter / len(queries))}
-        if kind != "flat":
-            faiss.write_index(idx, str(C.OUT / f"index_{kind}.faiss"))
+        faiss.write_index(idx, str(C.OUT / f"index_{kind}.faiss"))
         print(f"{kind:5s} p50 {stats[kind]['p50_ms']:.2f}ms  p95 {stats[kind]['p95_ms']:.2f}ms  "
               f"recall@10 vs flat {stats[kind]['recall_vs_flat']:.3f}")
 
@@ -108,9 +107,7 @@ def main():
           f"precision@5 {stats['label_precision@5']:.3f}  "
           f"({stats['label_queries']} queries with a finding)")
 
-    faiss.write_index(flat, str(C.OUT / "index_flat.faiss"))
     (C.OUT / "index_bench.json").write_text(json.dumps(stats, indent=2), encoding="utf-8")
-
 
 if __name__ == "__main__":
     main()

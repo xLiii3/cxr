@@ -47,7 +47,7 @@ class ChestXray(Dataset):
         return (img - _MEAN) / _STD, torch.from_numpy(self.labels[i])
 
 
-def loader(df, batch_size=64, shuffle=False, workers=4, npy=None):
+def loader(df, batch_size=64, shuffle=False, workers=0, npy=None):
     return DataLoader(
         ChestXray(df, npy), batch_size=batch_size, shuffle=shuffle,
         num_workers=workers, pin_memory=True, drop_last=False,

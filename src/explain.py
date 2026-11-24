@@ -2,18 +2,18 @@
 
     python -m src.explain
 """
-import matplotlib
+import matplotlib.pyplot as plt
+import numpy as np
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from PIL import Image
 
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt  # noqa: E402
-import numpy as np  # noqa: E402
-import torch  # noqa: E402
-import torch.nn as nn  # noqa: E402
-import torch.nn.functional as F  # noqa: E402
+from . import config as C
+from .data import loader, read_split, to_tensor
+from .model import blocks, freeze_all, inject_lora, load_clip, load_lora
 
-from . import config as C  # noqa: E402
-from .data import read_split, to_tensor  # noqa: E402
-from .model import blocks, freeze_all, inject_lora, load_clip, load_lora  # noqa: E402
+plt.switch_backend("Agg")
 
 CASES = ["Cardiomegaly", "Effusion", "Nodule", "Atelectasis"]
 
@@ -56,7 +56,6 @@ def denorm(x):
 
 def test_probs(model, df, device, batch=128):
     """Sigmoid scores for the whole test split."""
-    from .data import loader
     out = []
     with torch.no_grad():
         for x, _ in loader(df, batch):
@@ -84,9 +83,8 @@ def main():
         cls = C.CLASSES.index(name)
         cand = np.where(test[name].to_numpy() == 1)[0]
         pick = cand[probs[cand, cls].argmax()]
-        from PIL import Image
         img = Image.open(C.IMAGES / test["image"][pick]).convert("RGB")
-        x = to_tensor(img).to(device).requires_grad_(True)
+        x = to_tensor(img).to(device)
         with torch.enable_grad():
             cam = gradcam(model, x, cls)
         base = denorm(x[0].detach().cpu())

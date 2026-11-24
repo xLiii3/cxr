@@ -1,4 +1,4 @@
 stage,params,mean_auc,mean_ap
 Zero-shot,0,0.6834,0.0953
-Linear probe,7182,0.7254,0.1274
-LoRA,891918,0.7429,0.1403
+Linear probe,7182,0.7287,0.1295
+LoRA,891918,0.7432,0.1402

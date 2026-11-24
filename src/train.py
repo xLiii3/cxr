@@ -1,4 +1,4 @@
-﻿"""Stage 3: train the linear probe or LoRA adapters.
+"""Stage 3: train the linear probe or LoRA adapters.
 
     python -m src.train --stage linear
     python -m src.train --stage lora --epochs 3
@@ -14,8 +14,7 @@ import torch.nn as nn
 from . import config as C
 from .data import loader, read_split
 from .metrics import summarize
-from .model import (count_params, freeze_all, inject_lora, load_clip, load_lora,
-                    trainable_parameters)
+from .model import freeze_all, inject_lora, load_clip, load_lora
 
 
 def seed_all(seed):
@@ -87,7 +86,8 @@ def run_linear(args):
     Xva, Yva = X[mask["val"]], Y[mask["val"]]
     Xte, Yte = X[mask["test"]].to(args.device), Y[mask["test"]]
 
-    head, hist = fit_probe(Xtr, Ytr, Xva, Yva, args.epochs, device=args.device)
+    head, hist = fit_probe(Xtr, Ytr, Xva, Yva, args.epochs, batch=args.batch,
+                           lr=args.lr_probe, device=args.device)
     with torch.no_grad():
         p = torch.sigmoid(head(Xte)).cpu().numpy()
     res = summarize(Yte.numpy(), p)
@@ -108,19 +108,19 @@ def run_lora(args):
     model.head = nn.Linear(model.embed_dim, len(C.CLASSES)).to(args.device)
 
     train_names = {n for n, p in model.named_parameters() if p.requires_grad}
+    n_train = sum(p.numel() for p in model.parameters() if p.requires_grad)
     total_params = sum(p.numel() for p in model.parameters())
-    n_train = count_params(model)
     keep = [n for n in model.state_dict() if n in train_names]
     print(f"trainable {n_train:,} / {total_params:,} ({100 * n_train / total_params:.3f}%)")
 
     lora_params = [p for n, p in model.named_parameters() if p.requires_grad and not n.startswith("head")]
     opt = torch.optim.AdamW([
-        {"params": lora_params, "lr": args.lr},
+        {"params": lora_params, "lr": args.lr_lora},
         {"params": model.head.parameters(), "lr": args.lr_head},
     ], weight_decay=args.wd)
     steps = args.epochs * ((len(tr) + args.batch - 1) // args.batch)
     sched = torch.optim.lr_scheduler.OneCycleLR(
-        opt, max_lr=[args.lr, args.lr_head], total_steps=steps, pct_start=0.15)
+        opt, max_lr=[args.lr_lora, args.lr_head], total_steps=steps, pct_start=0.15)
     loss_fn = nn.BCEWithLogitsLoss()
 
     best_ap, hist, t0 = -1.0, [], time.time()
@@ -135,7 +135,8 @@ def run_lora(args):
                 loss = loss_fn(model.head(model.encode_image(x)).float(), y)
             opt.zero_grad(set_to_none=True)
             loss.backward()
-            torch.nn.utils.clip_grad_norm_(trainable_parameters(model), 1.0)
+            torch.nn.utils.clip_grad_norm_(
+                [p for p in model.parameters() if p.requires_grad], 1.0)
             opt.step()
             sched.step()
             total += loss.item() * len(y)
@@ -172,8 +173,9 @@ def main():
     ap.add_argument("--stage", choices=["linear", "lora"], required=True)
     ap.add_argument("--epochs", type=int, default=0)
     ap.add_argument("--batch", type=int, default=64)
-    ap.add_argument("--lr", type=float, default=2e-4)
+    ap.add_argument("--lr-lora", type=float, default=2e-4)
     ap.add_argument("--lr-head", type=float, default=1e-3)
+    ap.add_argument("--lr-probe", type=float, default=1e-3)
     ap.add_argument("--wd", type=float, default=1e-2)
     ap.add_argument("--r", type=int, default=16)
     ap.add_argument("--alpha", type=int, default=16)

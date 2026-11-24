@@ -115,8 +115,8 @@ def main():
         "split_patients": {k: int(df[df.split == k]["patient"].nunique()) for k in ("train", "val", "test")},
         "prevalence": {c: float(df[c].mean()) for c in C.CLASSES},
     }
+    C.OUT.mkdir(parents=True, exist_ok=True)
     (C.OUT / "dataset_stats.json").write_text(json.dumps(stats, indent=2), encoding="utf-8")
-    print("wrote", C.SPLIT_CSV, C.IMAGE_NPY)
 
 
 if __name__ == "__main__":

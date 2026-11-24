@@ -4,18 +4,19 @@
 """
 import json
 
-import matplotlib
+import faiss
+import matplotlib.pyplot as plt
 import numpy as np
-
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt  # noqa: E402
-import torch  # noqa: E402
+import torch
+from PIL import Image
 
 from . import config as C
-from .data import read_split  # noqa: E402
-from .metrics import summarize  # noqa: E402
-from .model import embed_texts, inject_lora, load_clip, load_lora  # noqa: E402
-from .train import fit_probe  # noqa: E402
+from .data import read_split
+from .metrics import summarize
+from .model import embed_texts, inject_lora, load_clip, load_lora
+from .train import fit_probe
+
+plt.switch_backend("Agg")
 
 STAGES = [("zeroshot", "Zero-shot"), ("linear", "Linear probe"), ("lora", "LoRA")]
 ASSETS = C.ROOT / "assets"
@@ -32,10 +33,10 @@ def table():
         d = load_json(f"{key}.json")
         if not d:
             continue
-        ck = {"zeroshot": 0, "linear": 7182, "lora": None}[key]
-        if key == "lora":
-            ck = sum(v.numel() for v in torch.load(C.OUT / "lora.pt", weights_only=False)["state"].values())
-        rows.append((label, d["mean_auc"], d["mean_ap"], ck))
+        ck = C.OUT / f"{key}.pt"
+        n = 0 if key == "zeroshot" else sum(
+            v.numel() for v in torch.load(ck, weights_only=False)["state"].values())
+        rows.append((label, d["mean_auc"], d["mean_ap"], n))
     lines = ["| 方案 | 可训练参数 | mean AUC | mean AP |", "| --- | --- | --- | --- |"]
     for label, auc, ap, n in rows:
         lines.append(f"| {label} | {n:,} | {auc:.4f} | {ap:.4f} |")
@@ -91,9 +92,6 @@ def fig_curves():
 
 
 def fig_retrieval(device="cuda"):
-    import faiss
-    from PIL import Image
-
     gallery = read_split()
     gallery = gallery[gallery.split == "test"].reset_index(drop=True)
     emb = np.load(C.OUT / "gallery_emb.npy")
@@ -104,7 +102,7 @@ def fig_retrieval(device="cuda"):
     model.eval()
 
     def panel(r, items, label, offset=0):
-        for j, (sc, im) in enumerate(items):
+        for j, im in enumerate(items):
             ax = axes[r][j + offset]
             ax.imshow(im, cmap="gray")
             ax.axis("off")
@@ -115,9 +113,8 @@ def fig_retrieval(device="cuda"):
     for r in range(2):
         qi = int(np.random.default_rng(r).integers(len(emb)))
         _, I = idx.search(emb[qi:qi + 1], 6)
-        imgs = [(1.0, Image.open(C.IMAGES / gallery.image[qi]).convert("L"))]
-        for j in I[0][1:]:
-            imgs.append((float(emb[qi] @ emb[j]), Image.open(C.IMAGES / gallery.image[j]).convert("L")))
+        imgs = [Image.open(C.IMAGES / gallery.image[qi]).convert("L")]
+        imgs += [Image.open(C.IMAGES / gallery.image[j]).convert("L") for j in I[0][1:]]
         panel(r, imgs, "image query")
 
     for r, text in enumerate(["cardiomegaly", "pleural effusion"], start=2):
@@ -126,7 +123,7 @@ def fig_retrieval(device="cuda"):
         _, I = idx.search(t[None], 5)
         axes[r][0].text(0.5, 0.5, f"text:\n{text}", ha="center", va="center", fontsize=8)
         axes[r][0].axis("off")
-        imgs = [(float(t @ emb[j]), Image.open(C.IMAGES / gallery.image[j]).convert("L")) for j in I[0]]
+        imgs = [Image.open(C.IMAGES / gallery.image[j]).convert("L") for j in I[0]]
         panel(r, imgs, f"text: {text}", offset=1)
     fig.suptitle("Top-5 retrieval: image queries (rows 1-2) and text queries (rows 3-4)", fontsize=10)
     fig.tight_layout()
@@ -134,8 +131,9 @@ def fig_retrieval(device="cuda"):
     plt.close(fig)
 
 
-def ablation(epochs=60, seeds=(0, 1, 2)):
+def ablation(epochs=60, seeds=(0, 1, 2), device=None):
     """Same probe, random image-level split instead of patient-level."""
+    device = device or ("cuda" if torch.cuda.is_available() else "cpu")
     d = np.load(C.EMB_NPZ)
     X, Y = torch.from_numpy(d["X"]), torch.from_numpy(d["y"])
     aucs = []
@@ -144,9 +142,9 @@ def ablation(epochs=60, seeds=(0, 1, 2)):
         perm = torch.from_numpy(rng.permutation(len(X)))
         n_tr, n_va = int(0.7 * len(X)), int(0.1 * len(X))
         tr, va, te = perm[:n_tr], perm[n_tr:n_tr + n_va], perm[n_tr + n_va:]
-        head, _ = fit_probe(X[tr], Y[tr], X[va], Y[va], epochs, device="cuda", verbose=False)
+        head, _ = fit_probe(X[tr], Y[tr], X[va], Y[va], epochs, device=device, verbose=False)
         with torch.no_grad():
-            p = torch.sigmoid(head(X[te].to("cuda"))).cpu().numpy()
+            p = torch.sigmoid(head(X[te].to(device))).cpu().numpy()
         aucs.append(summarize(Y[te].numpy(), p)["mean_auc"])
     base = load_json("linear.json")
     out = {"patient_split_auc": base["mean_auc"],
