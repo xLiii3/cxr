@@ -16,3 +16,4 @@ __pycache__/
 
 # release assets (built by hand, uploaded to GitHub Releases)
 dist/
+outputs/predictions/

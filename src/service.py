@@ -17,7 +17,7 @@ from .model import embed_texts, freeze_all, inject_lora, load_clip, load_lora
 class Engine:
     """Loads the fine-tuned encoder, the classifier head and the FAISS gallery once."""
 
-    def __init__(self, device=None, use_lora=True, k=5):
+    def __init__(self, device=None, use_lora=True, k=5, gallery=True):
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
         self.k = k
         self.model, _, self.tokenizer = load_clip(self.device)
@@ -27,6 +27,9 @@ class Engine:
         if use_lora and (C.OUT / "lora.pt").exists():
             load_lora(self.model, C.OUT / "lora.pt")
         self.model.eval()
+        self.gallery = self.emb = self.labels = self.index = None
+        if not gallery:
+            return
         self.gallery = pd.read_csv(C.OUT / "gallery.csv")
         self.emb = np.load(C.OUT / "gallery_emb.npy").astype("float32")
         lab = C.OUT / "gallery_y.npy"
@@ -63,6 +66,8 @@ class Engine:
         return self._search(self.embed_text(text), k)
 
     def _search(self, vec, k):
+        if self.index is None:
+            raise RuntimeError("no gallery loaded; run `python -m src.index` first")
         k = int(k or self.k)
         scores, ids = self.index.search(vec[None].astype("float32"), k)
         out = []

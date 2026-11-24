@@ -90,8 +90,11 @@ python app.py                      # 打开 http://127.0.0.1:7860
 `data/raw/images` 那 11 GB **只是训练用的原始数据**：推理时不需要，换用户自己的图片也能跑：
 
 ```bash
-python -m src.index --images D:\my_xrays     # 用你自己的文件夹重建检索底库（标签显示「未标注」）
+python -m src.predict --images D:\my_xrays --cam --top 3   # 批量出 CSV + Grad-CAM
+python -m src.index --images D:\my_xrays                  # 用你自己的文件夹重建检索底库（标签显示「未标注」）
 ```
+
+`src.predict` 每张图打印一行（Top-1 类别与概率），并把 14 类概率写成 `outputs/predictions/predictions.csv`，`--cam` 额外存热力图。
 
 完整流程（从零训练）：
 
