@@ -1,4 +1,6 @@
 """Inference engine shared by the Gradio app and the HTTP API."""
+from pathlib import Path
+
 import faiss
 import numpy as np
 import pandas as pd
@@ -27,7 +29,8 @@ class Engine:
         self.model.eval()
         self.gallery = pd.read_csv(C.OUT / "gallery.csv")
         self.emb = np.load(C.OUT / "gallery_emb.npy").astype("float32")
-        self.labels = np.load(C.OUT / "gallery_y.npy")
+        lab = C.OUT / "gallery_y.npy"
+        self.labels = np.load(lab) if lab.exists() else None
         self.index = faiss.read_index(str(C.OUT / "index_flat.faiss"))
 
     # -- encoders -------------------------------------------------------
@@ -64,13 +67,22 @@ class Engine:
         scores, ids = self.index.search(vec[None].astype("float32"), k)
         out = []
         for s, i in zip(scores[0], ids[0]):
-            names = [C.CLASS_ZH[c] for c, v in zip(C.CLASSES, self.labels[i]) if v]
+            if self.labels is None:
+                names, fallback = [], ["未标注"]
+            else:
+                names = [C.CLASS_ZH[c] for c, v in zip(C.CLASSES, self.labels[i]) if v]
+                fallback = ["正常"]
             out.append({"image": self.open(self.gallery.image[i]), "score": float(s),
-                        "labels": names or ["正常"], "file": self.gallery.image[i]})
+                        "labels": names or fallback, "file": Path(str(self.gallery.image[i])).name})
         return out
 
     def open(self, name):
-        return Image.open(C.IMAGES / name).convert("L")
+        path = Path(str(name))
+        if not path.is_absolute():
+            path = C.IMAGES / path
+        if not path.exists():
+            path = C.GALLERY / (Path(str(name)).stem + ".jpg")
+        return Image.open(path).convert("L")
 
     def explain(self, image, cls=None):
         """Grad-CAM heatmap blended on the input; cls defaults to the top class."""

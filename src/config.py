@@ -6,6 +6,7 @@ DATA = ROOT / "data"
 RAW = DATA / "raw"
 IMAGES = RAW / "images"
 PROC = DATA / "processed"
+GALLERY = DATA / "gallery" / "thumbs"
 OUT = ROOT / "outputs"
 CLIP_DIR = ROOT / "models" / "BiomedCLIP"
 

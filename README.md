@@ -64,6 +64,29 @@ HNSW `0.10 ms`（Recall@10 1.000）；按标签重合度算，Top-5 命中率 **
 
 ## 4. 快速开始
 
+**只想要能跑起来，不训练？** 三条命令，约 820 MB 下载量，不需要那 11 GB 数据集：
+
+```bash
+python -m src.setup --model                            # 747 MB 模型权重（走 HF 镜像）
+python -m src.setup --artifacts <release 里的 zip 链接>  # 69 MB：LoRA 权重 + 检索索引 + 演示缩略图
+python -m src.setup --check                            # 逐项核对，缺什么一目了然
+```
+
+| 你的用途 | 需要下载 | 大约 |
+| --- | --- | --- |
+| 只分类自己的胸片 | 模型权重 + `lora.pt` | 750 MB |
+| 连检索一起用（自带图库） | 上面 + 自己的图片文件夹 | 750 MB |
+| 用我发布的演示底库 | 模型权重 + release 的 `cxr-artifacts.zip` | 820 MB |
+| 复现 README 里的数字 | 上面 + NIH 子集（`--data`） | 12 GB |
+
+`data/raw/images` 那 11 GB **只是训练用的原始数据**：推理时不需要，换用户自己的图片也能跑：
+
+```bash
+python -m src.index --images D:\my_xrays     # 用你自己的文件夹重建检索底库（标签显示「未标注」）
+```
+
+完整流程（从零训练）：
+
 ```bash
 # 0) 环境（Windows + CUDA 12.8；sm_120 的卡必须用 cu128 轮子）
 conda create -n cxr python=3.10 -y && conda activate cxr
@@ -109,6 +132,7 @@ cv/
 ├── src/
 │   ├── config.py          # 路径、14 类、prompt 模板、归一化常数
 │   ├── fetch_data.py      # 镜像下载 + 解压（断点续传）
+│   ├── setup.py           # 一键下载：模型 / release 资产 / 数据集
 │   ├── prepare.py         # 标签解析、patient-level 划分、memmap 预处理
 │   ├── data.py            # Dataset / DataLoader / 在线预处理
 │   ├── model.py           # BiomedCLIP 加载、LoRA 注入、特征抽取
@@ -175,6 +199,15 @@ A：14×14 的 patch 网格 + 全局注意力，定位精度本来就只有 ~16 
 **Q：Windows 上 `num_workers>0` 卡死？**
 A：Windows 用 spawn 起子进程，入口脚本没有 `if __name__ == "__main__":` 时会无限递归重启。
 本项目所有 CLI 默认 `--workers 0`（数据已在内存 memmap 里，单进程足够快）。
+
+**Q：`data/raw/images` 那 11 GB 必须吗？**
+A：只有重新训练必须。推理要的是「模型权重 + `lora.pt` + 检索索引」；图像只是训练输入，
+你自己的胸片放进一个文件夹就能建底库（`python -m src.index --images <DIR>`）。
+
+**Q：release 里的 `cxr-artifacts.zip` 装了什么？**
+A：`outputs/lora.pt`（3.4 MB）、`gallery_emb.npy`（10.7 MB）、`gallery_y.npy`、`index_flat.faiss`（10.7 MB）、
+`gallery.csv`、`data/gallery/thumbs/*.jpg`（5,473 张 256 px 缩略图，42 MB）——解压即用，不碰训练数据。
+自己打包：把上面这些路径按项目根目录的相对结构压成 zip，传到 GitHub Releases 即可。
 
 ## 9. 参考
 
