@@ -1,0 +1,15 @@
+# data and weights (download with: python -m src.fetch_data)
+data/
+models/
+
+# large artifacts (keep the small metric JSONs so results are visible on GitHub)
+outputs/*.pt
+outputs/*.faiss
+outputs/*.npy
+outputs/*.npz
+
+# caches
+__pycache__/
+*.pyc
+.venv/
+.ipynb_checkpoints/

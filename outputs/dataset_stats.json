@@ -1,0 +1,30 @@
+{
+  "images": 24999,
+  "patients": 6585,
+  "split_images": {
+    "train": 17092,
+    "val": 2434,
+    "test": 5473
+  },
+  "split_patients": {
+    "train": 4609,
+    "val": 658,
+    "test": 1318
+  },
+  "prevalence": {
+    "Atelectasis": 0.0908036321452858,
+    "Cardiomegaly": 0.0328013120524821,
+    "Effusion": 0.09328373134925397,
+    "Infiltration": 0.1485659426377055,
+    "Mass": 0.033841353654146165,
+    "Nodule": 0.04884195367814713,
+    "Pneumonia": 0.011520460818432738,
+    "Pneumothorax": 0.03804152166086643,
+    "Consolidation": 0.036641465658626346,
+    "Edema": 0.013960558422336894,
+    "Emphysema": 0.019040761630465218,
+    "Fibrosis": 0.022160886435457418,
+    "Pleural_Thickening": 0.029641185647425898,
+    "Hernia": 0.002360094403776151
+  }
+}
