@@ -1,5 +1,8 @@
 # 胸片多模态诊断与检索系统 · CXR Multimodal Diagnosis & Retrieval
 
+[![release](https://img.shields.io/github/v/release/xLiii3/cxr-multimodal-retrieval)](https://github.com/xLiii3/cxr-multimodal-retrieval/releases)
+[![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
 用 **BiomedCLIP**（ViT-B/16 + PubMedBERT）在 **NIH ChestX-ray14** 上做医学影像的多标签分类与跨模态检索：
 一张胸片 → 14 类病变概率 + Grad-CAM；一句文本 / 一张图 → 从 5,473 张图库里检索最相似的胸片。
 整个工程在单张 RTX 5060 Ti（16 GB）上从零训练、评估、服务化，全流程离线可复现。
@@ -67,10 +70,15 @@ HNSW `0.10 ms`（Recall@10 1.000）；按标签重合度算，Top-5 命中率 **
 **只想要能跑起来，不训练？** 三条命令，约 820 MB 下载量，不需要那 11 GB 数据集：
 
 ```bash
-python -m src.setup --model                            # 747 MB 模型权重（走 HF 镜像）
-python -m src.setup --artifacts <release 里的 zip 链接>  # 69 MB：LoRA 权重 + 检索索引 + 演示缩略图
-python -m src.setup --check                            # 逐项核对，缺什么一目了然
+git clone https://github.com/xLiii3/cxr-multimodal-retrieval && cd cxr-multimodal-retrieval
+
+python -m src.setup --model        # 747 MB 模型权重（走 HF 镜像，断点续传）
+python -m src.setup --artifacts https://github.com/xLiii3/cxr-multimodal-retrieval/releases/latest/download/cxr-artifacts.zip
+python -m src.setup --check        # 逐项核对，缺什么一目了然
+python app.py                      # 打开 http://127.0.0.1:7860
 ```
+
+`--artifacts` 那 69 MB 是 LoRA 权重 + 检索索引 + 5,473 张演示缩略图，解压即用；不下载它就只能分类，检索页签没有底库。
 
 | 你的用途 | 需要下载 | 大约 |
 | --- | --- | --- |
